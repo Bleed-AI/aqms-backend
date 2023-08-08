@@ -1,0 +1,7 @@
+id,username,first_name,last_name,password,is_admin,disabled
+1,admin,hello,bye,$2b$12$vInJOMtXpIWhVU6eOXhSM..Tq8JmpfbrcQol4RD3tswznWrpAdr3m,t,f
+
+
+
+Python > 3.10
+
