@@ -11,4 +11,4 @@ def validate_password(password, hashed_password):
 def generate_password_hash(password):
     return pwd_context.hash(password)
 
-print(generate_password_hash("admin"))
+print(generate_password_hash("Gfv63gfHk$$tWty"))
