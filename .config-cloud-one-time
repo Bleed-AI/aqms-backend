@@ -40,4 +40,4 @@ sudo -u postgres psql
 \c aqms
 INSERT INTO public."user"
 (id, username, first_name, last_name, "password", is_admin, disabled)
-VALUES(1, 'admin', 'hi', 'hi', '$2b$12$vInJOMtXpIWhVU6eOXhSM..Tq8JmpfbrcQol4RD3tswznWrpAdr3m', true, false);
+VALUES(1, 'admin', 'hi', 'hi', '$2b$12$KgzCIp5XDk7V6QkMudN5juGiF53medufMvcHw/jscwt8GcNVWE/A2', true, false);
