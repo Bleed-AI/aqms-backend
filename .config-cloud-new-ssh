@@ -1,0 +1,21 @@
+sudo apt install git
+git clone https://github.com/Bleed-AI/aqms-backend.git
+
+curl https://pyenv.run | bash
+echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
+echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
+echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.profile
+echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.profile
+echo 'eval "$(pyenv init -)"' >> ~/.profile
+exec "$SHELL"
+
+pyenv install 3.11.4
+pyenv global 3.11.4
+
+cd aqms-backend
+python -m pip install virtualenv
+python -m virtualenv env
+. env/bin/activate
+python -m pip install -r requirements.txt
+python main.py
