@@ -20,9 +20,6 @@ pyenv install 3.11.4
 pyenv global 3.11.4
 
 cd aqms-backend
-# python -m pip install virtualenv
-# python -m virtualenv env
-# . env/bin/activate
 python -m pip install -r requirements.txt
 
 
@@ -30,6 +27,7 @@ sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)
 wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/trusted.gpg.d/pgdg.asc &>/dev/null
 
 sudo apt update
+sudo apt install lsof
 sudo apt install postgresql postgresql-client -y
 sudo systemctl status postgresql
 psql --version
@@ -57,9 +55,3 @@ INSERT INTO public."user"
 VALUES(1, 'admin', 'hi', 'hi', '$2b$12$KgzCIp5XDk7V6QkMudN5juGiF53medufMvcHw/jscwt8GcNVWE/A2', true, false);
 
 python main.py
-
-
-To Rerun:
-
-sudo apt install lsof
-sudo kill -9 `sudo lsof -t -i:8000`
