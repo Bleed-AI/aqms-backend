@@ -1,3 +1,4 @@
+sudo apt-get update
 sudo apt install git
 git clone https://github.com/Bleed-AI/aqms-backend.git
 
@@ -19,11 +20,10 @@ pyenv install 3.11.4
 pyenv global 3.11.4
 
 cd aqms-backend
-python -m pip install virtualenv
-python -m virtualenv env
-. env/bin/activate
+# python -m pip install virtualenv
+# python -m virtualenv env
+# . env/bin/activate
 python -m pip install -r requirements.txt
-python main.py
 
 
 sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
@@ -34,10 +34,32 @@ sudo apt install postgresql postgresql-client -y
 sudo systemctl status postgresql
 psql --version
 
+
 sudo -u postgres psql -c 'create database aqms;'
 sudo -u postgres psql
 \password
+    admin
+
 \c aqms
+
+CREATE TABLE public."user" (
+    id serial PRIMARY KEY,
+    username varchar(255) NOT NULL,
+    first_name varchar(255),
+    last_name varchar(255),
+    "password" varchar(255) NOT NULL,
+    is_admin boolean,
+    disabled boolean
+);
+
 INSERT INTO public."user"
 (id, username, first_name, last_name, "password", is_admin, disabled)
 VALUES(1, 'admin', 'hi', 'hi', '$2b$12$KgzCIp5XDk7V6QkMudN5juGiF53medufMvcHw/jscwt8GcNVWE/A2', true, false);
+
+python main.py
+
+
+To Rerun:
+
+sudo apt install lsof
+sudo kill -9 `sudo lsof -t -i:8000`
