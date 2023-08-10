@@ -54,4 +54,7 @@ INSERT INTO public."user"
 (id, username, first_name, last_name, "password", is_admin, disabled)
 VALUES(1, 'admin', 'hi', 'hi', '$2b$12$KgzCIp5XDk7V6QkMudN5juGiF53medufMvcHw/jscwt8GcNVWE/A2', true, false);
 
-python main.py
+# python main.py
+
+chmod +x main.py
+nohup python /home/<username>/aqms-backend/main.py &

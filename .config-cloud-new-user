@@ -15,4 +15,8 @@ pyenv global 3.11.4
 
 cd aqms-backend
 python -m pip install -r requirements.txt
-python main.py
+
+chmod +x main.py
+nohup python /home/<username>/aqms-backend/main.py &
+
+# python main.py

@@ -3,4 +3,7 @@ cd aqms-backend
 sudo pkill python
 sudo kill -9 `sudo lsof -t -i:8000`
 
-python main.py
+chmod +x main.py
+nohup python /home/<username>/aqms-backend/main.py &
+
+# python main.py
