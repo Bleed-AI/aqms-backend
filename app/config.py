@@ -11,6 +11,7 @@ class AppConfig(BaseSettings):
     }
 
     log_dir = os.getcwd() + "/data/log"
+    ratelist_dir = os.getcwd() + "/data/ratelists"
 
     api_secret_key: str = "94ae0794944e63d2931a41875591768f9602f607676462f53bdd40212424fc3b"
     api_crypto_algo: str = "HS256"
@@ -24,7 +25,7 @@ class AppConfig(BaseSettings):
         {
             "function": "process_devices",
             "frequency": "repeat_after",
-            "seconds": 60 * 15
+            "seconds": 60 * 45
         },
         {
             "function": "set_all_devices_to_1mb",

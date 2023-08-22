@@ -1,3 +1,5 @@
+import sys
+import inspect
 import json
 import threading
 import datetime
@@ -6,7 +8,7 @@ from playhouse.shortcuts import model_to_dict
 
 from app.api_models import BudgetInfoAPIModel
 from app.db_models import BudgetInfo, BudgetStartInfo, Device, STPInfo, TopupInfo, ScheduledActions
-from app.utils import Log as log
+from app.utils import Log as log, log_and_print_error
 
 
 class BudgetAndTopupFacade():
@@ -28,7 +30,7 @@ class BudgetAndTopupFacade():
                 return bi
 
         except Exception as e:
-            log.error("Error in saving budget info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in saving budget info. {}".format(e))
 
@@ -36,7 +38,7 @@ class BudgetAndTopupFacade():
         try:
             return [bi for bi in BudgetInfo.select().where(BudgetInfo.org_id == org_id)]
         except Exception as e:
-            log.error("Error in fetching budget info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in fetching budget info. {}".format(e))
 
@@ -44,7 +46,7 @@ class BudgetAndTopupFacade():
         try:
             return [bi for bi in BudgetInfo.select().where(BudgetInfo.org_id == org_id, BudgetInfo.group_id == group_id)]
         except Exception as e:
-            log.error("Error in get_group_budget_info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in fetching budget info. {}".format(e))
 
@@ -64,7 +66,7 @@ class BudgetAndTopupFacade():
                                  args=(bsi, )).start()
                 return bsi
         except Exception as e:
-            log.error("Error in saving budget start info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in saving budget start info. {}".format(e))
 
@@ -72,7 +74,7 @@ class BudgetAndTopupFacade():
         try:
             return [bsi for bsi in BudgetStartInfo.select().where(BudgetStartInfo.org_id == org_id)]
         except Exception as e:
-            log.error("Error in fetching budget start info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in fetching budget start info. {}".format(e))
 
@@ -80,7 +82,7 @@ class BudgetAndTopupFacade():
         try:
             return [bsi for bsi in BudgetStartInfo.select().where(BudgetStartInfo.org_id == org_id, BudgetStartInfo.group_id == group_id)]
         except Exception as e:
-            log.error("Error in fetching budget start info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in fetching budget start info. {}".format(e))
 
@@ -100,7 +102,7 @@ class BudgetAndTopupFacade():
                 threading.Thread(target=self.process_stp, args=(stp, )).start()
                 return stp
         except Exception as e:
-            log.error("Error in saving STP info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in saving STP info. {}".format(e))
 
@@ -108,7 +110,7 @@ class BudgetAndTopupFacade():
         try:
             return [si for si in STPInfo.select().where(STPInfo.org_id == org_id)]
         except Exception as e:
-            log.error("Error in fetching STP info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in fetching STP info. {}".format(e))
 
@@ -116,7 +118,7 @@ class BudgetAndTopupFacade():
         try:
             return [si for si in STPInfo.select().where(STPInfo.org_id == org_id, STPInfo.group_id == group_id)]
         except Exception as e:
-            log.error("Error in fetching STP info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in fetching STP info. {}".format(e))
 
@@ -136,7 +138,7 @@ class BudgetAndTopupFacade():
                                  args=(topup, )).start()
                 return topup
         except Exception as e:
-            log.error("Error in saving topup info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in saving topup info. {}".format(e))
 
@@ -144,7 +146,7 @@ class BudgetAndTopupFacade():
         try:
             return [ti for ti in TopupInfo.select().where(TopupInfo.org_id == org_id)]
         except Exception as e:
-            log.error("Error in fetching topup info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in fetching topup info. {}".format(e))
 
@@ -152,7 +154,7 @@ class BudgetAndTopupFacade():
         try:
             return [ti for ti in TopupInfo.select().where(TopupInfo.org_id == org_id, TopupInfo.group_id == group_id)]
         except Exception as e:
-            log.error("Error in fetching topup info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in fetching topup info. {}".format(e))
 
@@ -196,7 +198,7 @@ class BudgetAndTopupFacade():
                 bi.status = "processed"
                 bi.save()
         except Exception as e:
-            log.error("Error in process_budget_info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
 
     def process_budget_start_info(self, bsi):
         try:
@@ -235,7 +237,7 @@ class BudgetAndTopupFacade():
                 bsi.status = "processed"
                 bsi.save()
         except Exception as e:
-            log.error("Error in process_budget_start_info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
 
     def process_stp(self, stp):
         try:
@@ -276,7 +278,7 @@ class BudgetAndTopupFacade():
                 stp.status = "processed"
                 stp.save()
         except Exception as e:
-            log.error("Error in process_budget_start_info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
 
     def process_topup_info(self, topup):
         try:
@@ -313,7 +315,7 @@ class BudgetAndTopupFacade():
                 topup.status = "processed"
                 topup.save()
         except Exception as e:
-            log.error("Error in process_budget_start_info. {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
 
     def process_scheduled_info_items(self):
         now = datetime.datetime.now()
@@ -323,6 +325,7 @@ class BudgetAndTopupFacade():
         bis = BudgetInfo.select().where(BudgetInfo.is_scheduled == True,
                                         BudgetInfo.config_time > hour_ago, BudgetInfo.config_time <= now, BudgetInfo.status == "pending")
         log.event("process_scheduled_info_items: bis: {}.".format(bis))
+        
         for bi in bis:
             if bi is not None and bi.id > 0:
                 self.process_budget_info(bi)

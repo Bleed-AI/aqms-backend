@@ -1,6 +1,10 @@
 import os
+import sys
+import inspect
 from datetime import datetime
 from fastapi.exceptions import HTTPException
+from fastapi.responses import FileResponse
+import mimetypes
 from pathlib import Path
 import pycountry
 import pandas as pd
@@ -10,12 +14,15 @@ from app.utils import Singleton
 from app.db_models import Device, RateList as RateListModel
 from app.utils import Print as p
 from app.api_models import RateListAPIModel
-from app.utils import Log as log
+from app.utils import Log as log, log_and_print_error
+from app.config import AppConfig
+
+config = AppConfig()
 
 
 class RateList(metaclass=Singleton):
-    ratelist_dir = os.getcwd() + "/data/ratelists/"
-    ratelist_file = os.getcwd() + "/data/ratelists/current.xlsx"
+    ratelist_dir = config.ratelist_dir
+    ratelist_file = config.ratelist_dir + "/current.xlsx"
     ratelist_df = None
 
     def upload_ratelist(self, file, is_scheduled, config_time, tags):
@@ -23,7 +30,7 @@ class RateList(metaclass=Singleton):
             contents = file.file.read()
             dt = datetime.now()
             new_name = f"ratelist-{dt.year}-{dt.month}-{dt.day}-{dt.hour}-{dt.minute}-{dt.second}.xlsx"
-            with open(f"{self.ratelist_dir}{new_name}", "wb") as f:
+            with open(f"{self.ratelist_dir}/{new_name}", "wb") as f:
                 f.write(contents)
                 new_rl = RateListModel.create(
                     file_name=new_name, is_active=True, is_scheduled=is_scheduled, config_time=config_time, tags=json.dumps(tags))
@@ -56,7 +63,7 @@ class RateList(metaclass=Singleton):
                     "status": new_rl.status,
                 }
         except Exception as e:
-            log.error("Exception in upload_ratelist: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 422, detail="Error in uploading or saving file. {}".format(e))
 
@@ -72,7 +79,7 @@ class RateList(metaclass=Singleton):
                 ratelists.append(rl_model)
             return ratelists
         except Exception as e:
-            log.error("Exception in get_ratelists: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 422, detail="Error in getting list of rate files. {}".format(e))
 
@@ -96,11 +103,13 @@ class RateList(metaclass=Singleton):
                 log.event(
                     "get_rate_for_country_code: country: {}.".format(country))
                 # having country we can get rate from dataframe
-                df = pd.read_excel("{}{}".format(
-                    self.ratelist_dir, rl.file_name))
+                print (f"ratelist_dir: {config.ratelist_dir}")
+                print (f"ratelist_file: {rl.file_name}")
+                df = pd.read_excel(f"{config.ratelist_dir}/{rl.file_name}")
+                print (f"df: {df}")
                 country_df = df[df["Country"] == country.name.upper()]
                 if len(country_df) == 1:
-                    rate = df.iloc[0]["Cost €/MB"]
+                    rate = df.iloc[0]["Cost $/MB"]
                     log.event("get_rate_for_country_code: obtained rate for {}: {}.".format(
                         country.name, rate))
                     return rate
@@ -109,8 +118,7 @@ class RateList(metaclass=Singleton):
             else:
                 log.error("Could not get rate list file.".format(e))
         except Exception as e:
-            log.error("Exception in get_rate_for_country_code, device_id: {}, country: {}: {}".format(
-                device_id, code, e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
 
     def get_devices_for_tags(self, tags):
         print(f"tags: {tags}")
@@ -149,3 +157,50 @@ class RateList(metaclass=Singleton):
                 else:
                     log.event(
                         f"Not the suitabe time for ratelist: {rl.file_name}. Skipping for now")
+
+    def download_ratelist(self, ratelist_id):
+        print(f"Going to find and download the ratelist: {ratelist_id}")
+        try:
+            file = RateListModel.get_or_none(ratelist_id)
+            print(f"Ratelist file: {file}")
+            if file is not None and hasattr(file, "id") and file.id > 0:
+                file_path = f"{config.ratelist_dir}/{file.file_name}"
+                print(f"Ratelist file path: {file_path}")
+                headers = {
+                    "Content-Disposition": f'attachment; filename="{file.file_name}"'
+                }
+                mime = mimetypes.guess_type(file_path)
+                if mime is not None and len(mime) > 0:
+                    print(f"Ratelist file mime type: {mime[0]}")
+                    mime = mime[0]
+                    return FileResponse(
+                        path=file_path,
+                        filename=file.file_name,
+                        media_type=mime,
+                        headers=headers,
+                    )
+            else:
+                return None
+        except Exception as e:
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
+    
+    def delete_ratelist(self, ratelist_id):
+        log.event(f"Going to find and delete the ratelist: {ratelist_id}")
+        print(f"Going to find and delete the ratelist: {ratelist_id}")
+        try:
+            file = RateListModel.get_or_none(ratelist_id)
+            log.event(f"file: {file}")
+            print(f"file: {file}")
+            if file is not None and hasattr(file, "id") and file.id > 0:
+                file_path = f"{config.ratelist_dir}/{file.file_name}"
+                log.event(f"file_path: {file_path}")
+                print(f"file_path: {file_path}")
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    log.event(f"file removed: {file_path}")
+                    print(f"file removed: {file_path}")
+                return file.delete_instance()
+            else:
+                return None
+        except Exception as e:
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())

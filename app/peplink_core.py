@@ -1,3 +1,5 @@
+import sys
+import inspect
 import json
 import time
 from os.path import exists
@@ -9,7 +11,7 @@ from fastapi.exceptions import HTTPException
 
 from app.utils import Singleton
 from app.config import AppConfig, ICApiUrls
-from app.utils import Log as log
+from app.utils import log_and_print_error
 
 config = AppConfig()
 
@@ -66,8 +68,7 @@ class PeplinkCore(metaclass=Singleton):
             else:
                 return None
         except Exception as e:
-            print(chalk.red("Exception in fetch_api_data: {}".format(e)))
-            log.error("Exception in fetch_api_data: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in fetching resource from InControl 2 API. {}".format(e))
 
@@ -104,8 +105,7 @@ class PeplinkCore(metaclass=Singleton):
             else:
                 return None
         except Exception as e:
-            print(chalk.red("Exception in posting resource: {}".format(e)))
-            log.error("Exception in post_api_data: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in posting resource at InControl 2 API. {}".format(e))
 
@@ -142,8 +142,7 @@ class PeplinkCore(metaclass=Singleton):
             else:
                 return None
         except Exception as e:
-            print(chalk.red("Exception in updating resource: {}".format(e)))
-            log.error("Exception in put_api_data: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in updating resource at InControl 2 API. {}".format(e))
 
@@ -180,8 +179,7 @@ class PeplinkCore(metaclass=Singleton):
             else:
                 return None
         except Exception as e:
-            print(chalk.red("Exception in updating resource: {}".format(e)))
-            log.error("Exception in delete_api_data: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in updating resource at InControl 2 API. {}".format(e))
 
@@ -193,8 +191,7 @@ class PeplinkCore(metaclass=Singleton):
             else:
                 return True  # token is expired
         except Exception as e:
-            print(chalk.red("Exception in updating resource: {}".format(e)))
-            log.error("Exception in is_token_expired: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in updating resource at InControl 2 API. {}".format(e))
 
@@ -232,8 +229,7 @@ class PeplinkCore(metaclass=Singleton):
             else:
                 return False
         except Exception as e:
-            print(chalk.red("Exception in updating resource: {}".format(e)))
-            log.error("Exception in get_token: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 500, detail="Error in updating resource at InControl 2 API. {}".format(e))
 

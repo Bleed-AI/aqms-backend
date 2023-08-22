@@ -1,3 +1,5 @@
+import sys
+import inspect
 import pandas as pd
 from os.path import exists
 from urllib.parse import urlparse
@@ -5,7 +7,7 @@ from urllib.parse import urlparse
 from fastapi.exceptions import HTTPException
 import pendulum
 
-from app.utils import Log as log, nameprint
+from app.utils import Log as log, nameprint, log_and_print_error
 from app.utils import Singleton
 from app.config import AppConfig, ICApiUrls
 from app.db_models import Device, db
@@ -25,7 +27,7 @@ class PeplinkApi(metaclass=Singleton):
             if "data" in result and type(result["data"] == list):
                 return result["data"]
         except Exception as e:
-            log.error("Exception in get_orgs: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in fetching orgs: {}".format(e))
 
@@ -36,7 +38,7 @@ class PeplinkApi(metaclass=Singleton):
             if "data" in result and type(result["data"] == object):
                 return result["data"]
         except Exception as e:
-            log.error("Exception in get_org_by_id: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in fetching org detail: {}".format(e))
 
@@ -53,7 +55,7 @@ class PeplinkApi(metaclass=Singleton):
                         groups.append(new_grp)
             return groups
         except Exception as e:
-            log.error("Exception in get_groups: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in fetching groups: {}".format(e))
 
@@ -66,7 +68,7 @@ class PeplinkApi(metaclass=Singleton):
                 new_group = GroupAPIModel.parse_obj(group)
                 return new_group
         except Exception as e:
-            log.error("Exception in get_group_by_id: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in fetching group info: {}".format(e))
 
@@ -85,7 +87,7 @@ class PeplinkApi(metaclass=Singleton):
                         devices.append(new_dev)
                     return devices
         except Exception as e:
-            log.error("Exception in get_devices: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in get_devices: {}".format(e))
 
@@ -111,48 +113,60 @@ class PeplinkApi(metaclass=Singleton):
                 else:
                     raise HTTPException(204, detail="Could not find device.")
         except Exception as e:
-            log.error("Exception in get_device_details: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in fetching device details: {}".format(e))
 
     def get_devices_by_group(self, org_id, group_id, is_background_processing=False):
+        print ("get_devices_by_group")
         devices = []
         try:
+            print ("get_devices_by_group 1")
             result = pepcore.fetch_api_data(
                 ICApiUrls.get_group_devices.format(organization_id=org_id, group_id=group_id))
             if "data" in result and type(result["data"] == list):
                 group_devs = result["data"]
+                total=0
                 if group_devs is not None and len(group_devs) > 0:
+
                     tally_devices = self.tally_devices_with_db(
                         org_id, group_id, group_devs, False)
                     if tally_devices is not None and type(tally_devices) == list and len(tally_devices) > 0:
                         for dev in tally_devices:
+                            print(dev)
+                            total = total + 1
                             dev["org_id"] = org_id
                             new_dev = DeviceAPIModel.parse_obj(dev)
                             if is_background_processing:
-                                sim1_usage = 0
-                                sim2_usage = 0
-                                usage_info = self.get_router_sim_conn_usage(
-                                    org_id, group_id, new_dev.id)
-                                if usage_info is not None and len(usage_info) > 0:
-                                    for info in usage_info:
-                                        if info["sim"] == 1:
-                                            sim1_usage = info["usage"]
-                                        if info["sim"] == 2:
-                                            sim2_usage = info["usage"]
-                                usage_info = self.get_router_wan_conn_usage(
-                                    org_id, group_id, new_dev.id)
-                                if usage_info is not None and type(usage_info) == dict:
-                                    if "1" in usage_info and type(usage_info["1"]) == dict:
-                                        new_dev.sim1 = usage_info["1"]
-                                        new_dev.sim1["usage_kb"] = sim1_usage
-                                    if "2" in usage_info and type(usage_info["2"]) == dict:
-                                        new_dev.sim2 = usage_info["2"]
-                                        new_dev.sim2["usage_kb"] = sim2_usage
+                                if dev['monthly_budget'] > 0.1 and dev['yearly_budget'] > 0.1 and dev['dcStp'] < dev['daily_stp'] and dev['wcStp'] < dev['weekly_stp'] and dev['status'] == 'online':
+                                    sim1_usage = 0
+                                    sim2_usage = 0
+                                    usage_info = self.get_router_sim_conn_usage(
+                                        org_id, group_id, new_dev.id)
+                                    if usage_info is not None and len(usage_info) > 0:
+                                        for info in usage_info:
+                                            if info["sim"] == 1:
+                                                sim1_usage = info["usage"]
+                                            if info["sim"] == 2:
+                                                sim2_usage = info["usage"]
+                                    usage_info = self.get_router_wan_conn_usage(
+                                        org_id, group_id, new_dev.id)
+                                    if usage_info is not None and type(usage_info) == dict:
+                                        if "1" in usage_info and type(usage_info["1"]) == dict:
+                                            new_dev.sim1 = usage_info["1"]
+                                            new_dev.sim1["usage_kb"] = sim1_usage
+                                        if "2" in usage_info and type(usage_info["2"]) == dict:
+                                            new_dev.sim2 = usage_info["2"]
+                                            new_dev.sim2["usage_kb"] = sim2_usage
                             devices.append(new_dev)
+                            # #break the loop and return devices if total is 5
+                            # if total == 5:
+                            #     break
+                            print (total, "get_devices_by_group total")
                     return devices
         except Exception as e:
-            log.error("Exception in get_devices_by_group: {}".format(e))
+            print(e,"get_devices_by_group 2")
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in get_devices_by_group: {}".format(e))
 
@@ -167,7 +181,8 @@ class PeplinkApi(metaclass=Singleton):
                     tags=device["tags"] if "tags" in device else None
                 ).on_conflict(
                     conflict_target=(Device.sn,),
-                    update={Device.tags: device["tags"]
+                    update={Device.group_id: group_id,
+                            Device.tags: device["tags"]
                             if "tags" in device else None}
                 ).execute()
             db_devs = Device.select().where(Device.org_id == org_id) if org_devs_only else Device.select(
@@ -201,7 +216,8 @@ class PeplinkApi(metaclass=Singleton):
                     match_dev["ratelist"] = dev.ratelist
             return devices
         except Exception as e:
-            log.error("Exception in tally_devices_with_db: {}".format(e))
+            print (e)
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in tally_devices_with_db: {}".format(e))
 
@@ -220,7 +236,7 @@ class PeplinkApi(metaclass=Singleton):
             else:
                 return "Could not update tags for the device"
         except Exception as e:
-            log.error("Exception in update_device_tags: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in updating device tags: {}".format(e))
 
@@ -239,7 +255,7 @@ class PeplinkApi(metaclass=Singleton):
             else:
                 return "Could not update tags for the device"
         except Exception as e:
-            log.error("Exception in delete_device_tags: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in deleting device tags: {}".format(e))
 
@@ -254,7 +270,7 @@ class PeplinkApi(metaclass=Singleton):
             device.save()
             return device
         except Exception as e:
-            log.error("Exception in update_budget: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in updating device budget: {}".format(e))
 
@@ -271,7 +287,7 @@ class PeplinkApi(metaclass=Singleton):
                         if "1" in sims_info and "2" in sims_info:
                             return sims_info
         except Exception as e:
-            log.error("Exception in get_router_wan_conn_usage: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in fetching device usage status: {}".format(e))
 
@@ -296,7 +312,7 @@ class PeplinkApi(metaclass=Singleton):
             else:
                 return None
         except Exception as e:
-            log.error("Exception in get_router_sim_conn_usage: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in get_router_sim_conn_usage: {}".format(e))
 
@@ -339,7 +355,7 @@ class PeplinkApi(metaclass=Singleton):
             else:
                 return False
         except Exception as e:
-            log.error("Exception in set_allowance_on_device_sim: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in setting allowance on device: {}".format(e))
 
@@ -356,6 +372,6 @@ class PeplinkApi(metaclass=Singleton):
             else:
                 return "Could not apply config on device"
         except Exception as e:
-            log.error("Exception in apply_config_on_device: {}".format(e))
+            log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             pepcore.raise_and_print_error(
                 "Exception in applying device configuration: {}".format(e))

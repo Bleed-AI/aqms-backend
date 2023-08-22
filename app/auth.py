@@ -1,3 +1,5 @@
+import sys
+import inspect
 from typing import Optional, Annotated
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
@@ -9,7 +11,7 @@ from email_validator import validate_email, EmailNotValidError
 
 from app.db_models import User
 from app.api_models import Token, TokenData, UserAPIModel
-from app.utils import Log as log
+from app.utils import Log as log, log_and_print_error
 from app.config import AppConfig
 
 # to get a string like this run:
@@ -44,8 +46,7 @@ def create_new_user(user: UserAPIModel):
         user.password = None
         return user
     except (EmailNotValidError, Exception) as e:
-        print(chalk.red("Exception in creating user: {}".format(e)))
-        log.error("Exception in creating user: {}".format(e))
+        log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Error in creating user. {}".format(e),
@@ -87,8 +88,7 @@ def get_auth_token(username, password):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                                 detail="Incorrect username or password")
     except Exception as e:
-        print(chalk.red("Exception in generating token: {}".format(e)))
-        log.error("Exception in generating token: {}".format(e))
+        log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incorrect username or password",
@@ -97,8 +97,6 @@ def get_auth_token(username, password):
 
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
-    if token[-1] == "}":
-        token = token[:-1]
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -116,7 +114,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             raise credentials_exception
         return user
     except JWTError as e:
-        log.error("Exception in get_current_user: {}".format(e))
+        log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
         raise credentials_exception
 
 
@@ -128,11 +126,11 @@ async def get_current_active_user(
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
+
 async def get_user_list(user: UserAPIModel):
     try:
-        if user and type(user) == dict and user["id"] > 0:
-            db_user = User.get_by_id(user["id"])
-            print(db_user)
+        if user and user.id > 0:
+            db_user = User.get_by_id(user)
             if db_user:
                 if db_user.is_admin:
                     users = [user for user in User.select(
@@ -142,18 +140,17 @@ async def get_user_list(user: UserAPIModel):
                     raise HTTPException(
                         403, detail="You are not an admin user.")
     except Exception as e:
-        log.error(
-            "Error in fetching user list. You don't seem to be an admin user. {}".format(e))
+        log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
         raise HTTPException(
             500, detail="Error in fetching user list. You don't seem to be an admin user. {}".format(e))
 
 
 async def delete_user(user: UserAPIModel, user_id):
-    if user and user["id"] == user_id:
+    if user and user.id == user_id:
         raise HTTPException(
             422, detail="You can't delete your own auth record.")
-    if user and type(user) == dict and user["id"] > 0:
-        db_user = User.get_by_id(user["id"])
+    if user and user.id > 0:
+        db_user = User.get_by_id(user.id)
         if db_user.is_admin:
             u = User.get_by_id(user_id)
             result = u.delete_instance()

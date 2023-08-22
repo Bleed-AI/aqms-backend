@@ -1,36 +1,74 @@
-import datetime
 import os
+import datetime
 import chalk
 import inspect
 from app.config import AppConfig
+import logging
 
-os.makedirs('data/log/', exist_ok=True)
 config = AppConfig()
 
+def setup_logger(logfile, logdir=config.log_dir):
+    """
+    Configure and return a logger with a specific logfile in the specified directory.
+    """
+    if not os.path.exists(logdir):
+        os.makedirs(logdir)
+
+    logfile_path = os.path.join(logdir, logfile)
+
+    logger = logging.getLogger(logfile)
+    logger.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    # Add a file handler to write logs to the specified file
+    file_handler = logging.FileHandler(logfile_path)
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    return logger
 
 class Log:
     def event(message):
-        today = datetime.datetime.now().strftime("%Y-%m-%d") 
         today = datetime.datetime.now().strftime("%Y-%m-%d")
-        with open("{}/event-log-{}.txt".format(config.log_dir, today), "a+") as log_file:
+        with open("{}/event-log-{}.txt".format(config.log_dir, today), "a") as log_file:
             log_file.write("{} {}".format(datetime.datetime.now().strftime(
                 "%m/%d/%Y, %H:%M:%S "), message))
             log_file.write("\r\n")
 
     def error(message):
         today = datetime.datetime.now().strftime("%Y-%m-%d")
-        with open("{}/error-log-{}.txt".format(config.log_dir, today), "a+") as log_file:
+        with open("{}/error-log-{}.txt".format(config.log_dir, today), "a") as log_file:
             log_file.write("{} {}".format(datetime.datetime.now().strftime(
                 "%m/%d/%Y, %H:%M:%S "), message))
             log_file.write("\r\n")
 
     def scheduler_event(message):
         today = datetime.datetime.now().strftime("%Y-%m-%d")
-        with open("{}/scheduler-log-{}.txt".format(config.log_dir, today), "a+") as log_file:
+        with open("{}/scheduler-log-{}.txt".format(config.log_dir, today), "a") as log_file:
             log_file.write("{} {}".format(datetime.datetime.now().strftime(
                 "%m/%d/%Y, %H:%M:%S "), message))
             log_file.write("\r\n")
 
+def log_and_print_error(method_name, e, exc_info):
+    exc_type, exc_obj, exc_tb = exc_info
+    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+    print(exc_type, fname, exc_tb.tb_lineno)
+    Log.error(
+        f"Exception in {method_name}: type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}, detail: {e}"
+    )
+    print(
+        chalk.red(
+            f"Exception in {method_name}: type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}, detail: {e}"
+        )
+    )
+
+def create_missing_dirs():
+    if not os.path.isdir(config.log_dir):
+        os.mkdir(config.log_dir)
+    if not os.path.isdir(config.ratelist_dir):
+        os.mkdir(config.ratelist_dir)
 
 def convert_datetime_to_string(d):
     if isinstance(d, datetime.datetime) or isinstance(d, datetime.date) or isinstance(d, datetime.time):

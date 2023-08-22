@@ -186,6 +186,7 @@ class DeviceAPIModel(BaseModel):
     last_topup_attempt: Union[datetime.datetime, None]
     last_topup_status: Union[str, None]
     last_topup_state: Union[str, None]
+    ratelist: Union[int, None]
 
 
 class BudgetInfo(BaseModel):
@@ -244,3 +245,6 @@ class RateListAPIModel(BaseModel):
     is_active: bool
     tags: Union[str, None]
     uploaded_at: Union[datetime.datetime, None]
+    is_scheduled: bool
+    config_time: Union[datetime.datetime, None]
+    status: Union[str, None]
