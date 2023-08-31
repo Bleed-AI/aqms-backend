@@ -25,7 +25,7 @@ class RateList(metaclass=Singleton):
     ratelist_file = config.ratelist_dir + "/current.xlsx"
     ratelist_df = None
 
-    def upload_ratelist(self, file, is_scheduled, config_time, tags):
+    def upload_ratelist(self, file, is_scheduled, config_time, tags,org_id,group_id):
         try:
             contents = file.file.read()
             dt = datetime.now()
@@ -33,7 +33,7 @@ class RateList(metaclass=Singleton):
             with open(f"{self.ratelist_dir}/{new_name}", "wb") as f:
                 f.write(contents)
                 new_rl = RateListModel.create(
-                    file_name=new_name, is_active=True, is_scheduled=is_scheduled, config_time=config_time, tags=json.dumps(tags))
+                    file_name=new_name, is_active=True, is_scheduled=is_scheduled, config_time=config_time, tags=json.dumps(tags), org_id=org_id, group_id=group_id)
                 if is_scheduled and config_time > dt:
                     # skip processing the file for later
                     log.event(
@@ -46,10 +46,11 @@ class RateList(metaclass=Singleton):
                             for device in devices:
                                 if device is not None:
                                     Device.update(ratelist=new_rl.id).where(
-                                        Device.sn == device.sn).execute()
+                                        Device.sn == device.sn and Device.org_id == org_id and Device.group_id == group_id).execute()
                     else:
                         # no tags are specified, update ratelist for all devices
-                        Device.update(ratelist=new_rl.id).execute()
+                        Device.update(ratelist=new_rl.id).where(
+                            Device.org_id == org_id and Device.group_id == group_id).execute()
                     new_rl.status = "processed"
                     new_rl.save()
                 return {
@@ -61,22 +62,26 @@ class RateList(metaclass=Singleton):
                     "tags": json.loads(new_rl.tags),
                     "uploaded_at": new_rl.uploaded_at,
                     "status": new_rl.status,
+                    "org_id": org_id,
+                    "group_id": group_id
                 }
         except Exception as e:
             log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
             raise HTTPException(
                 422, detail="Error in uploading or saving file. {}".format(e))
 
-    def get_ratelists(self):
+    def get_ratelists(self, org_id, group_id):
         # for dev in tally_devices:
         #                 new_dev = DeviceAPIModel.parse_obj(dev)
         #                 devices.append(new_dev)
         ratelists = []
         try:
-            rls = RateListModel.select()
+            rls = RateListModel.select().where(RateListModel.org_id == org_id and RateListModel.group_id == group_id)
             for rl in rls:
                 rl_model = RateListAPIModel.from_orm(rl)
+                print(rl_model)
                 ratelists.append(rl_model)
+            
             return ratelists
         except Exception as e:
             log_and_print_error(inspect.stack()[0][3], e, sys.exc_info())
@@ -109,10 +114,16 @@ class RateList(metaclass=Singleton):
                 print (f"df: {df}")
                 country_df = df[df["Country"] == country.name.upper()]
                 if len(country_df) == 1:
-                    rate = df.iloc[0]["Cost $/MB"]
-                    log.event("get_rate_for_country_code: obtained rate for {}: {}.".format(
-                        country.name, rate))
-                    return rate
+                        if "Cost $/MB" in df.columns:
+                            rate = df.iloc[0]["Cost $/MB"]
+                            log.event("get_rate_for_country_code: obtained rate for {}: {}.".format(
+                                country.name, rate))
+                            return rate
+                        elif "Cost €/MB" in df.columns:
+                            rate = df.iloc[0]["Cost €/MB"]  # Adjust column name as needed
+                            log.event("get_rate_for_country_code: obtained rate for {} in Euro: {}.".format(
+                                country.name, rate))
+                            return rate
                 else:
                     return 0
             else:

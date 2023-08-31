@@ -21,7 +21,7 @@ pepcore = PeplinkCore()
 class PeplinkApi(metaclass=Singleton):
     def get_orgs(self):
         try:
-            print(ICApiUrls.get_orgs)
+            #print(ICApiUrls.get_orgs)
             result = pepcore.fetch_api_data(
                 ICApiUrls.get_orgs)
             if "data" in result and type(result["data"] == list):
@@ -133,7 +133,6 @@ class PeplinkApi(metaclass=Singleton):
                         org_id, group_id, group_devs, False)
                     if tally_devices is not None and type(tally_devices) == list and len(tally_devices) > 0:
                         for dev in tally_devices:
-                            print(dev)
                             total = total + 1
                             dev["org_id"] = org_id
                             new_dev = DeviceAPIModel.parse_obj(dev)
@@ -143,6 +142,9 @@ class PeplinkApi(metaclass=Singleton):
                                     sim2_usage = 0
                                     usage_info = self.get_router_sim_conn_usage(
                                         org_id, group_id, new_dev.id)
+                                    print(dev['sn'])
+                                    if dev['sn'] == '293B-8BD6-5C78':
+                                        print(usage_info)
                                     if usage_info is not None and len(usage_info) > 0:
                                         for info in usage_info:
                                             if info["sim"] == 1:
@@ -151,6 +153,8 @@ class PeplinkApi(metaclass=Singleton):
                                                 sim2_usage = info["usage"]
                                     usage_info = self.get_router_wan_conn_usage(
                                         org_id, group_id, new_dev.id)
+                                    if dev['sn'] == '293B-8BD6-5C78':
+                                        print(usage_info)
                                     if usage_info is not None and type(usage_info) == dict:
                                         if "1" in usage_info and type(usage_info["1"]) == dict:
                                             new_dev.sim1 = usage_info["1"]
@@ -350,7 +354,7 @@ class PeplinkApi(metaclass=Singleton):
                     allowance, org_id, group_id, device_id, sim))
                 res = self.apply_config_on_device(org_id, group_id, device_id)
                 if res and "resp_code" in result:
-                    return True
+                   return True
                 return False
             else:
                 return False

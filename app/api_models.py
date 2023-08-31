@@ -248,3 +248,5 @@ class RateListAPIModel(BaseModel):
     is_scheduled: bool
     config_time: Union[datetime.datetime, None]
     status: Union[str, None]
+    org_id: Union[str, None]
+    group_id: Union[int, None]

@@ -25,7 +25,7 @@ class AppConfig(BaseSettings):
         {
             "function": "process_devices",
             "frequency": "repeat_after",
-            "seconds": 60 * 45
+            "seconds": 60 * 10
         },
         {
             "function": "set_all_devices_to_1mb",
@@ -33,6 +33,7 @@ class AppConfig(BaseSettings):
             "scheduled_day_of_month": 1,
             "scheduled_time": "00:00",
         },
+        
         {
             "function": "process_pending_actions",
             "frequency": "repeat_after",

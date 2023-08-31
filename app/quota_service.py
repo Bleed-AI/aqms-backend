@@ -27,6 +27,9 @@ getSuccessfullTopUpCountLogger = setup_logger("get_successfull_topup_count.log")
 computeUsageInfoLogger = setup_logger("compute_usage_info.log")
 setDevicesTo1mbLogger = setup_logger("set_devices_to_1mb.log")
 compute_summary_for_both_simsLogger = setup_logger("compute_summary_for_both_sims.log")
+usageLogger = setup_logger("Fahad.log")
+
+
 class AutomatedQuotaService(metaclass=Singleton):
     def process_devices(self):
         try:
@@ -39,15 +42,14 @@ class AutomatedQuotaService(metaclass=Singleton):
                 for org in orgs:
                     processDevicesLogger.info("orgs are: {}".format(org))
                     groups = api.get_groups(org["id"])
-                    #only run for group 27
+                    
                     if groups is not None and len(groups) > 0:
                         processDevicesLogger.info("process_devices: Got {} groups from API.".format(len(groups)))
 
                         log.event(
                             "process_devices: Got {} groups from API.".format(len(groups)))
                         for group in groups:
-                            if group.id != 27:
-                                print("skipping group {}".format(group.id))
+                            if(group.id != 27):
                                 continue
                             processDevicesLogger.info("groups are: {}".format(group))
                             devices = api.get_devices_by_group(
@@ -58,18 +60,18 @@ class AutomatedQuotaService(metaclass=Singleton):
                                 log.event(
                                     "process_devices: Got {} devices from API.".format(len(devices)))
                                 # tally and save devices to db
-                                print("tallying devices for group {}".format(group.id) )
                                 dict_devs = [device.dict()
                                              for device in devices]
                                 
                                 api.tally_devices_with_db(
                                     org["id"], group.id, dict_devs, False)
-                                print ("tallying devices for group {} done".format(group.id))
                                 processDevicesLogger.info("process_devices: Total devices for group {} are {}.".format(group.id, len(devices)))
 
                                 log.event("process_devices: Total devices for group {} are {}.".format(
                                     group.id, len(devices)))
                                 for device in devices:
+                                    if device.sn == "293B-A3A2-0331":
+                                        usageLogger.info("device is: {}".format(device))
                                     processDevicesLogger.info("process_devices: device {} onlineStatus: {}.".format(device.id, device.onlineStatus))
 
                                     log.event(
@@ -86,12 +88,16 @@ class AutomatedQuotaService(metaclass=Singleton):
                                                 device.id, device.sim1))
                                             self.compute_usage_info(
                                                 org["id"], group, device, "A")
+                                            if device.sn == "293B-A3A2-0331":
+                                                usageLogger.info("device sim1 usage is:\n {}".format(device.sim1))
                                             processDevicesLogger.info("process_devices: process_sim_allowances for device {} sim A usage {}".format(
                                                 device.id, device.sim1))
                                             log.event("process_devices: process_sim_allowances for device {} sim A usage {}".format(
                                                 device.id, device.sim1))
                                             self.process_sim_allowances(
                                                 org["id"], group, device, "A", device.sim1)
+                                            if device.sn == "293B-A3A2-0331":
+                                                usageLogger.info("device sim1 usage is:\n {}".format(device.sim1))
                                             processDevicesLogger.info("process_devices: compute_usage_info again for device {} sim A usage {}".format(
                                                 device.id, device.sim1))
                                             log.event("process_devices: compute_usage_info again for device {} sim A usage {}".format(
@@ -106,6 +112,8 @@ class AutomatedQuotaService(metaclass=Singleton):
                                                 device.id, device.sim2))
                                             self.compute_usage_info(
                                                 org["id"], group, device, "B")
+                                            if device.sn == "293B-A3A2-0331":
+                                                usageLogger.info("device sim 2 usage is:\n {}".format(device.sim2))
                                             processDevicesLogger.info("process_devices: process_sim_allowances for device {} sim B usage {}".format(
                                                 device.id, device.sim2))
                                             log.event("process_devices: process_sim_allowances for device {} sim B usage {}".format(
@@ -155,9 +163,9 @@ class AutomatedQuotaService(metaclass=Singleton):
                 enabled = sim_usage["enable"] if "enable" in sim_usage else None
                 limit = sim_usage["limit"] if "limit" in sim_usage else None
                 unit = sim_usage["unit"] if "unit" in sim_usage else None
-                consumption = sim_usage["usage_kb"] if "usage_kb" in sim_usage else None
+                consumption = sim_usage["usage"] if "usage" in sim_usage else None
                 # because usage is recorded in KBs and we are using MBs
-                consumption = consumption / 1024 if consumption != 0 else 0
+                consumption = consumption if consumption != 0 else 0
                 percent = sim_usage["percent"] if "percent" in sim_usage else None
                 processSimAllowanceLogger.info("process_sim_allowances: enabled: {}, limit: {}, unit: {}, consumption: {}, percent: {}".format(
                     enabled, limit, unit, consumption, percent))
@@ -225,7 +233,7 @@ class AutomatedQuotaService(metaclass=Singleton):
                 processSimAllowanceLogger.info("process_sim_allowances: process sim allowance for device {}, sim: {}".format(
                     device.id, sim))
                 # if percent_consumption > 99.999:
-                if percent_consumption > 99:
+                if percent_consumption >= 99:
                     log.event("process_sim_allowances: utilization exceeds 100 percent for device {}, sim {}, checking if topup is already in progress".format(
                         device.id, sim))
                     processSimAllowanceLogger.info("process_sim_allowances: utilization exceeds 100 percent for device {}, sim {}, checking if topup is already in progress".format(
@@ -485,6 +493,7 @@ class AutomatedQuotaService(metaclass=Singleton):
                                                 sim="B",
                                                 action_type="monthly_allowance_reset",
                                                 action_status="pending")
+                                            device.save()
                                     else:
                                         setDevicesTo1mbLogger.info("set_all_devices_to_1mb: device.onlineStatus: {}.".format(device.onlineStatus))
                                         log.event(
@@ -512,7 +521,8 @@ class AutomatedQuotaService(metaclass=Singleton):
                 budget_start = device.y_budget_start
                 daily_stp = device.daily_stp
                 weekly_stp = device.weekly_stp
-                topup_mb = device.topup_mb
+                topup_mb = device.topup_mb * 1024
+
                 processTopUpAsPerRestrictionsLogger.info("The device has the following values: monthly_budget: {}, yearly_budget: {}, budget_start: {}, daily_stp: {}, weekly_stp: {}, topup_mb: {}.".format(
                     monthly_budget, yearly_budget, budget_start, daily_stp, weekly_stp, topup_mb))
                 log.event("process_topup_as_per_restrictions: monthly_budget: {}, yearly_budget: {}, budget_start: {}, daily_stp: {}, weekly_stp: {}, topup_mb: {}.".format(
@@ -522,6 +532,7 @@ class AutomatedQuotaService(metaclass=Singleton):
                 total_mtd_expense = 0
                 total_ytd_consumption = 0
                 total_ytd_expense = 0
+                
 
                 dev = Device.get(
                     Device.org_id == org_id, Device.group_id == group.id, Device.id == device.id)
@@ -578,6 +589,8 @@ class AutomatedQuotaService(metaclass=Singleton):
                 # check if effective monthly or yearly budget is 0
                 processTopUpAsPerRestrictionsLogger.info("process_topup_as_per_restrictions: monthly_budget: {}, yearly_budget: {}.".format(
                     monthly_budget, yearly_budget))
+                if monthly_budget == 0.1 or yearly_budget == 0.1: 
+                    return
                 if monthly_budget != 0 and total_mtd_expense >= monthly_budget:
                     # unlimited monthly budget is not set, and expense exceeds monthly budget
                     # let the user know via email
@@ -687,6 +700,7 @@ class AutomatedQuotaService(metaclass=Singleton):
                                         dev.wcStp = wstpc
                                         dev.last_topup_status = "successful"
                                         dev.last_topup_state = "successful"
+                                        dev.last_topup_attempt = now
                                         processTopUpAsPerRestrictionsLogger.info("process_topup_as_per_restrictions: dev after topup entry creation: {}.".format(
                                             dev))
                                 else:

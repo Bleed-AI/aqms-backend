@@ -43,6 +43,8 @@ class RateList(BaseModel):
     is_scheduled = BooleanField(default=False)
     config_time = DateTimeField(null=True)
     status = CharField(default="pending", choices=["pending", "processed"])
+    org_id = CharField(null=True)
+    group_id = CharField(null=True)
 
 
 class Organization(BaseModel):
@@ -96,6 +98,7 @@ class Device(BaseModel):
     topup_mb = IntegerField(default=0)
     tags = JSONField(null=True)
     ratelist = IntegerField(null=True)
+
 
 
 class BudgetInfo(BaseModel):

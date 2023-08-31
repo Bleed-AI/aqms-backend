@@ -31,15 +31,15 @@ create_missing_dirs()
 origins = [
     "http://localhost:3000",
     "https://quota-management-system.vercel.app",
+    "https://aqms-frontend.vercel.app"
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
 
 # create tables if they don't exist
@@ -173,14 +173,17 @@ async def update_yearly_budget(sn: str, budget: BudgetInfo, current_user: Annota
     return api.update_budget(sn, budget, tenure="yearly")
 
 
-@app.get("/ratelists")
-async def get_ratelists(current_user: Annotated[UserAPIModel, Depends(get_current_active_user)]):
-    return rl.get_ratelists()
+@app.get("/ratelists/{org_id}/{group_id}")
+async def get_ratelists(
+    org_id: str,
+    group_id: str,
+    current_user: UserAPIModel = Depends(get_current_active_user)
+):
+    return rl.get_ratelists(org_id, group_id)  
 
-
-@app.post("/ratelists")
-async def upload_ratelist(current_user: Annotated[UserAPIModel, Depends(get_current_active_user)], file: UploadFile, is_scheduled: bool = Form(...), config_time: datetime = Form(...), tags: Optional[list[str]] = Form(None)):
-    return rl.upload_ratelist(file, is_scheduled, config_time, tags)
+@app.post("/ratelists/")
+async def upload_ratelist(current_user: Annotated[UserAPIModel, Depends(get_current_active_user)], file: UploadFile, is_scheduled: bool = Form(...), config_time: datetime = Form(...), tags: Optional[list[str]] = Form(None),    org_id: str = Form(...),  group_id: str = Form(...) ):
+    return rl.upload_ratelist(file, is_scheduled, config_time, tags, org_id, group_id)
 
 
 @app.get("/ratelists/{ratelist_id}")
@@ -281,8 +284,8 @@ async def invoke_function():
     # return rl.get_rate_for_country_code("AF")
     # return qs.check_if_new_month("process_devices")
     return qs.process_devices()
-    #rl = RateList()
-    #return rl.process_pending_ratelists()
+    # rl = RateList()
+    # return rl.process_pending_ratelists()
 
 
 @app.on_event("startup")
